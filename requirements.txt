@@ -1,4 +1,3 @@
-```text
 yfinance
 pandas
 requests
