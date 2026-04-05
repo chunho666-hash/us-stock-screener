@@ -1,0 +1,29 @@
+name: Stock Screener Bot
+
+on:
+  schedule:
+    # 每日凌晨 04:00 HKT (即美股收市後) 執行
+    - cron: '0 20 * * 1-5'
+  workflow_dispatch: # 容許你隨時手動撳掣執行
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run Screener
+        env:
+          TG_TOKEN: ${{ secrets.TG_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+        run: python screener.py
