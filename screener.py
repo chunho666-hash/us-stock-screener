@@ -30,13 +30,14 @@ def get_tickers():
 
 def scan():
     tickers = get_tickers()
-    buy_list = []   # 買入訊號 (5 穿上 13, 都在 30 上)
-    drop_list = []  # 轉向訊號 (5 穿下, 變為 30 > 13 > 5)
+    buy_list = []   # 🚀 連續向上貫穿
+    drop_list = []  # 🚨 連續向下貫穿
     
     print(f"開始掃描 {len(tickers)} 隻股票...")
     
     for t in tickers:
         try:
+            # 抓取 40 天數據計算 EMA
             df = yf.download(t, period="40d", interval="1d", progress=False)
             if len(df) < 30: continue
             
@@ -46,33 +47,31 @@ def scan():
             
             curr, prev = df.iloc[-1], df.iloc[-2]
             
-            # --- 邏輯 1: 買入 (多頭) ---
+            # --- 🚀 邏輯 1: 連續向上貫穿 (Long) ---
+            # 條件：今日 5日線 穿過 30日線，且此時 5日線 已經在 13日線 之上
             buy_cond = (curr['Close'] > 80) and \
-                       (prev['E5'] <= prev['E13'] and curr['E5'] > curr['E13']) and \
-                       (curr['E5'] > curr['E30'] and curr['E13'] > curr['E30'])
+                       (prev['E5'] <= prev['E30'] and curr['E5'] > curr['E30']) and \
+                       (curr['E5'] > curr['E13'])
             
-            # --- 邏輯 2: 轉弱 (空頭) ---
-            # 5 跌穿 13 或 30
-            cross_down = (prev['E5'] >= prev['E13'] and curr['E5'] < curr['E13']) or \
-                         (prev['E5'] >= prev['E30'] and curr['E5'] < prev['E30'])
-            # 排列為 30 > 13 > 5
-            is_bearish = (curr['E30'] > curr['E13']) and (curr['E13'] > curr['E5'])
-            drop_cond = cross_down and is_bearish
+            # --- 🚨 邏輯 2: 連續向下貫穿 (Drop) ---
+            # 條件：今日 5日線 跌穿 30日線，且此時 5日線 已經在 13日線 之下
+            drop_cond = (prev['E5'] >= prev['E30'] and curr['E5'] < curr['E30']) and \
+                        (curr['E5'] < curr['E13'])
 
             if buy_cond:
-                buy_list.append(f"🎯 *{t}* - ${curr['Close']:.2f}")
+                buy_list.append(f"🚀 *{t}* - ${curr['Close']:.2f}")
             elif drop_cond:
                 drop_list.append(f"🚨 *{t}* - ${curr['Close']:.2f}")
         except: continue
     
-    # 建立報告
-    msg = "📊 **每日 EMA 掃描報告**\n\n"
+    # 建立合併報告
+    msg = "📊 **EMA 5-13-30 連續貫穿報告**\n\n"
     
-    msg += "🚀 **【買入訊號】(EMA 多頭交叉)**\n"
-    msg += ("\n".join(buy_list) if buy_list else "暫無") + "\n\n"
+    msg += "🔥 **【向上貫穿 - 強勢起步】**\n"
+    msg += (("\n".join(buy_list)) if buy_list else "暫無符合") + "\n\n"
     
-    msg += "⚠️ **【轉弱警報】(30 > 13 > 5 排列)**\n"
-    msg += ("\n".join(drop_list) if drop_list else "暫無")
+    msg += "🩸 **【向下貫穿 - 趨勢轉壞】**\n"
+    msg += (("\n".join(drop_list)) if drop_list else "暫無符合")
     
     send_to_all_bots(msg)
 
